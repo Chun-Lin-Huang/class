@@ -37,15 +37,18 @@ export interface AttendanceSession {
     attendedStudents?: Array<{
         studentId: string,
         userName: string,
-        checkInTime: Date
+        checkInTime: Date,
+        notes?: string
     }>,
     absentStudents?: Array<{
         studentId: string,
-        userName: string
+        userName: string,
+        notes?: string
     }>,
-    excusedStudents?: Array<{
+    excusedStudents: Array<{
         studentId: string,
-        userName: string
+        userName: string,
+        notes?: string
     }>,
     attendanceRecords?: any[],
     createdAt?: Date,

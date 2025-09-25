@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import RandomSelectionModal from './RandomSelectionModal';
 
 const MainPage: React.FC = () => {
-    const { user } = useAuth();
     const navigate = useNavigate();
+    const [showRandomModal, setShowRandomModal] = useState(false);
 
     const menuItems = [
         {
@@ -38,11 +38,23 @@ const MainPage: React.FC = () => {
             icon: '📊',
             path: '/attendance-records',
             color: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+        },
+        {
+            id: 'random-selection',
+            title: '隨機抽點',
+            description: '從今天出席的學生中隨機抽取',
+            icon: '🎲',
+            path: null,
+            color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
         }
     ];
 
-    const handleMenuClick = (path: string) => {
-        navigate(path);
+    const handleMenuClick = (item: any) => {
+        if (item.id === 'random-selection') {
+            setShowRandomModal(true);
+        } else if (item.path) {
+            navigate(item.path);
+        }
     };
 
     return (
@@ -52,7 +64,7 @@ const MainPage: React.FC = () => {
                     <div
                         key={item.id}
                         className="menu-card"
-                        onClick={() => handleMenuClick(item.path)}
+                        onClick={() => handleMenuClick(item)}
                         style={{ background: item.color }}
                     >
                         <div className="menu-icon">{item.icon}</div>
@@ -62,6 +74,11 @@ const MainPage: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            <RandomSelectionModal
+                isOpen={showRandomModal}
+                onClose={() => setShowRandomModal(false)}
+            />
         </div>
     );
 };

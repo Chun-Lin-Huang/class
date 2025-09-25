@@ -51,11 +51,18 @@ export const attendanceSessionSchema = new Schema<AttendanceSession>({
     attendedStudents: [{
         studentId: { type: String, required: true },
         userName: { type: String, required: true },
-        checkInTime: { type: Date, default: Date.now }
+        checkInTime: { type: Date, default: Date.now },
+        notes: { type: String, required: false }
     }],
     absentStudents: [{
         studentId: { type: String, required: true },
-        userName: { type: String, required: true }
+        userName: { type: String, required: true },
+        notes: { type: String, required: false }
+    }],
+    excusedStudents: [{
+        studentId: { type: String, required: true },
+        userName: { type: String, required: true },
+        notes: { type: String, required: false }
     }],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }

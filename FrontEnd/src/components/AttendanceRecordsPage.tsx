@@ -15,6 +15,7 @@ const AttendanceRecordsPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [expandedSession, setExpandedSession] = useState<string | null>(null);
     const [courseStudents, setCourseStudents] = useState<any[]>([]);
+    const [notesInput, setNotesInput] = useState<{[key: string]: string}>({});
     const [toast, setToast] = useState({
         message: '',
         type: 'success' as 'success' | 'error' | 'info',
@@ -42,6 +43,56 @@ const AttendanceRecordsPage: React.FC = () => {
 
     const hideToast = () => {
         setToast(prev => ({ ...prev, isVisible: false }));
+    };
+
+    const handleExportExcel = async () => {
+        if (!selectedCourse) {
+            showToast('請先選擇課程', 'error');
+            return;
+        }
+
+        try {
+            showToast('正在匯出 Excel 檔案...', 'info');
+            
+            const response = await fetch(`${api.exportExcel}/${selectedCourse}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                },
+            });
+
+            if (response.ok) {
+                // 獲取檔案名稱
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = `點名紀錄_${new Date().toISOString().split('T')[0]}.xlsx`;
+                
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                    if (filenameMatch) {
+                        filename = decodeURIComponent(filenameMatch[1]);
+                    }
+                }
+
+                // 下載檔案
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showToast('Excel 檔案匯出成功！', 'success');
+            } else {
+                const errorData = await response.json();
+                showToast(errorData.message || '匯出失敗', 'error');
+            }
+        } catch (error) {
+            console.error('匯出 Excel 失敗:', error);
+            showToast('匯出失敗，請稍後再試', 'error');
+        }
     };
 
     const loadCourses = async () => {
@@ -167,12 +218,13 @@ const AttendanceRecordsPage: React.FC = () => {
         setExpandedSession(expandedSession === sessionId ? null : sessionId);
     };
 
-    const handleStatusChange = async (sessionId: string, studentId: string, studentName: string, newStatus: 'present' | 'absent' | 'excused') => {
+    const handleStatusChange = async (sessionId: string, studentId: string, studentName: string, newStatus: 'present' | 'absent' | 'excused', notes?: string) => {
         try {
             const response = await asyncPatch(api.updateAttendanceStatus, {
                 sessionId,
                 studentId,
-                newStatus
+                newStatus,
+                notes: notes || ''
             });
 
             if (response.code === 200) {
@@ -197,17 +249,20 @@ const AttendanceRecordsPage: React.FC = () => {
                                 updatedSession.attendedStudents.push({
                                     studentId,
                                     userName: studentName,
-                                    checkInTime: new Date().toISOString()
+                                    checkInTime: new Date().toISOString(),
+                                    notes: notes || ''
                                 });
                             } else if (newStatus === 'absent') {
                                 updatedSession.absentStudents.push({
                                     studentId,
-                                    userName: studentName
+                                    userName: studentName,
+                                    notes: notes || ''
                                 });
                             } else if (newStatus === 'excused') {
                                 updatedSession.excusedStudents.push({
                                     studentId,
-                                    userName: studentName
+                                    userName: studentName,
+                                    notes: notes || ''
                                 });
                             }
                             
@@ -249,7 +304,8 @@ const AttendanceRecordsPage: React.FC = () => {
                 <h1>點名紀錄</h1>
             </div>
 
-            {/* 過濾器區域 */}
+            <div className="page-content">
+                {/* 過濾器區域 */}
             <div className="filters-section">
                 <div className="filter-group">
                     <label>選擇課程:</label>
@@ -331,7 +387,7 @@ const AttendanceRecordsPage: React.FC = () => {
                         <div className="records-list">
                             <div className="records-header">
                                 <h3>點名紀錄列表 ({filteredRecords.length} 筆)</h3>
-                                <button className="export-btn">
+                                <button className="export-btn" onClick={handleExportExcel}>
                                     匯出Excel
                                 </button>
                             </div>
@@ -401,7 +457,21 @@ const AttendanceRecordsPage: React.FC = () => {
                                                             if (!student) return null;
                                                             
                                                             const currentStatus = getStudentCurrentStatus(session, student.studentId);
-                                                            const attendedStudent = session.attendedStudents?.find(s => s.studentId === student.studentId);
+                                                            
+                                                            const studentKey = `${session._id}-${student._id}`;
+                                                            // 獲取現有的備註
+                                                            let existingNotes = '';
+                                                            if (currentStatus === 'present') {
+                                                                const presentStudent = session.attendedStudents?.find(s => s.studentId === student.studentId);
+                                                                existingNotes = presentStudent?.notes || '';
+                                                            } else if (currentStatus === 'absent') {
+                                                                const absentStudent = session.absentStudents?.find(s => s.studentId === student.studentId);
+                                                                existingNotes = absentStudent?.notes || '';
+                                                            } else if (currentStatus === 'excused') {
+                                                                const excusedStudent = session.excusedStudents?.find(s => s.studentId === student.studentId);
+                                                                existingNotes = excusedStudent?.notes || '';
+                                                            }
+                                                            const currentNotes = notesInput[studentKey] || existingNotes;
                                                             
                                                             return (
                                                                 <div key={index} className={`student-record ${currentStatus}`}>
@@ -410,16 +480,63 @@ const AttendanceRecordsPage: React.FC = () => {
                                                                     <span className="student-department">
                                                                         {student.department || '-'} / {student.class || '-'}
                                                                     </span>
-                                                                    <select 
-                                                                        className="status-select"
-                                                                        value={currentStatus}
-                                                                        onChange={(e) => handleStatusChange(session._id, student._id, student.name, e.target.value as any)}
-                                                                    >
-                                                                        <option value="unmarked">未點名</option>
-                                                                        <option value="present">出席</option>
-                                                                        <option value="absent">缺席</option>
-                                                                        <option value="excused">請假</option>
-                                                                    </select>
+                                                                    <div className="status-controls">
+                                                                        <select 
+                                                                            className="status-select"
+                                                                            value={currentStatus}
+                                                                            onChange={(e) => {
+                                                                                const newStatus = e.target.value as any;
+                                                                                handleStatusChange(session._id, student._id, student.name, newStatus, currentNotes);
+                                                                            }}
+                                                                        >
+                                                                            <option value="unmarked">未點名</option>
+                                                                            <option value="present">出席</option>
+                                                                            <option value="absent">缺席</option>
+                                                                            <option value="excused">請假</option>
+                                                                        </select>
+                                                                        <input
+                                                                            type="text"
+                                                                            className="notes-input"
+                                                                            placeholder="備註..."
+                                                                            value={currentNotes}
+                                                                            onChange={(e) => {
+                                                                                const newNotes = e.target.value;
+                                                                                setNotesInput(prev => ({ ...prev, [studentKey]: newNotes }));
+                                                                                // 只有當狀態不是 unmarked 時才更新
+                                                                                if (currentStatus !== 'unmarked') {
+                                                                                    // 立即更新本地狀態
+                                                                                    setAttendanceRecords(prevRecords => 
+                                                                                        prevRecords.map(s => {
+                                                                                            if (s._id === session._id) {
+                                                                                                const updatedSession = { ...s };
+                                                                                                
+                                                                                                // 更新對應狀態的備註
+                                                                                                if (currentStatus === 'present') {
+                                                                                                    updatedSession.attendedStudents = updatedSession.attendedStudents?.map(stu => 
+                                                                                                        stu.studentId === student.studentId ? { ...stu, notes: newNotes } : stu
+                                                                                                    ) || [];
+                                                                                                } else if (currentStatus === 'absent') {
+                                                                                                    updatedSession.absentStudents = updatedSession.absentStudents?.map(stu => 
+                                                                                                        stu.studentId === student.studentId ? { ...stu, notes: newNotes } : stu
+                                                                                                    ) || [];
+                                                                                                } else if (currentStatus === 'excused') {
+                                                                                                    updatedSession.excusedStudents = updatedSession.excusedStudents?.map(stu => 
+                                                                                                        stu.studentId === student.studentId ? { ...stu, notes: newNotes } : stu
+                                                                                                    ) || [];
+                                                                                                }
+                                                                                                
+                                                                                                return updatedSession;
+                                                                                            }
+                                                                                            return s;
+                                                                                        })
+                                                                                    );
+                                                                                    
+                                                                                    // 異步更新後端
+                                                                                    handleStatusChange(session._id, student._id, student.name, currentStatus, newNotes);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })
@@ -442,6 +559,7 @@ const AttendanceRecordsPage: React.FC = () => {
                     <p>請先選擇一個課程來查看點名紀錄</p>
                 </div>
             )}
+            </div>
 
             <Toast
                 message={toast.message}

@@ -61,5 +61,15 @@ export class AttendanceRoute extends Route {
         this.router.patch(`${this.url}update-attendance-status`, (req, res) => {
             this.Contorller.updateAttendanceStatus(req, res);
         });
+
+        // 匯出課程點名紀錄為 Excel
+        this.router.get(`${this.url}export-excel/:courseId`, (req, res) => {
+            this.Contorller.exportAttendanceToExcel(req, res);
+        });
+
+        // 隨機抽點功能
+        this.router.get(`${this.url}random-selection/:courseId`, (req, res) => {
+            this.Contorller.randomSelection(req, res);
+        });
     }
 }

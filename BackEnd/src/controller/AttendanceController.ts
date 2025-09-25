@@ -113,8 +113,60 @@ export class AttendanceController extends Contorller {
      * 更新學生出席狀態（用於編輯點名紀錄）
      */
     public async updateAttendanceStatus(req: Request, res: Response) {
-        const { sessionId, studentId, newStatus } = req.body;
-        const response = await this.service.updateAttendanceStatus(sessionId, studentId, newStatus);
+        const { sessionId, studentId, newStatus, notes } = req.body;
+        const response = await this.service.updateAttendanceStatus(sessionId, studentId, newStatus, notes);
         res.status(response.code).send(response);
+    }
+
+    /**
+     * 匯出課程點名紀錄為 Excel
+     */
+    public async exportAttendanceToExcel(req: Request, res: Response) {
+        const { courseId } = req.params;
+        
+        try {
+            const response = await this.service.exportAttendanceToExcel(courseId);
+            
+            if (response.code === 200 && response.body) {
+                const { buffer, filename } = response.body;
+                
+                // 設定檔案下載的 headers
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+                res.setHeader('Content-Length', buffer.length);
+                
+                // 發送檔案
+                res.send(buffer);
+            } else {
+                res.status(response.code).send(response);
+            }
+        } catch (error) {
+            console.error('Export Excel error:', error);
+            res.status(500).send({
+                code: 500,
+                message: '匯出失敗',
+                body: undefined
+            });
+        }
+    }
+
+    /**
+     * 隨機抽點功能
+     */
+    public async randomSelection(req: Request, res: Response) {
+        const { courseId } = req.params;
+        const { date } = req.query;
+        
+        try {
+            const response = await this.service.randomSelection(courseId, date as string);
+            res.status(response.code).send(response);
+        } catch (error) {
+            console.error('Random selection error:', error);
+            res.status(500).send({
+                code: 500,
+                message: '隨機抽點失敗',
+                body: undefined
+            });
+        }
     }
 }

@@ -46,14 +46,18 @@ export class UserService extends Service {
                     resp.message = "student list is full";
                     resp.code = 403;
                 }else{
-                    if (true) { // Temporarily bypass validation
+                    // 驗證學生名稱格式
+                    const validationResult = await this.userNameValidator(info.name);
+                    if (validationResult === '驗證通過') {
                         info.sid = String(current.length+1) ;
                         info._id = undefined;
                         const res = new studentModel(info);
-                        resp.body = await res.save();
+                        const savedStudent = await res.save();
+                        resp.body = savedStudent as any;
+                        resp.message = "學生新增成功";
                     }else{
                         resp.code = 403;
-                        resp.message = nameValidator;
+                        resp.message = validationResult;
                     }
                 }
             } catch(error){

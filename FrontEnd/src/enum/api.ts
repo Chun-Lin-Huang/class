@@ -20,6 +20,8 @@ export enum api{
     courseStudents = "http://localhost:2083/api/v1/attendance/course-students",
     manualAttendance = "http://localhost:2083/api/v1/attendance/manual-attendance",
     updateAttendanceStatus = "http://localhost:2083/api/v1/attendance/update-attendance-status",
+    exportExcel = "http://localhost:2083/api/v1/attendance/export-excel",
+    randomSelection = "http://localhost:2083/api/v1/attendance/random-selection",
 
         // 課程學生管理相關
         enrollStudent = "http://localhost:2083/api/v1/course-students/enroll",

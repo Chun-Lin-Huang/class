@@ -1,6 +1,7 @@
 export interface Student {
     _id?: string;
     studentId: string;
+    sid?: string;
     name: string;
     department?: string;
     grade?: string;

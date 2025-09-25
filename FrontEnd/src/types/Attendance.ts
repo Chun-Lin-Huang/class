@@ -24,15 +24,18 @@ export interface AttendanceSession {
     attendedStudents: Array<{
         studentId: string,
         userName: string,
-        checkInTime: string
+        checkInTime: string,
+        notes?: string
     }>,
     absentStudents: Array<{
         studentId: string,
-        userName: string
+        userName: string,
+        notes?: string
     }>,
-    excusedStudents?: Array<{
+    excusedStudents: Array<{
         studentId: string,
-        userName: string
+        userName: string,
+        notes?: string
     }>,
     attendanceCount?: number,
     createdAt: string,
